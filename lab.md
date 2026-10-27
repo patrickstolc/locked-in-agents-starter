@@ -1,14 +1,14 @@
 # Locked In: From API calls to agents
 
-Last time, you wrote an interpreter that turned a player's sentence into an action. This time, you will use PydanticAI to handle the model interaction, then give an agent two tools for exploring the same room.
+Last time, you connected the escape room to an LLM through an HTTP request. This time, you will use PydanticAI to handle the model interaction, then give an agent two tools for exploring the same room.
 
-Work through the steps yourself or with a partner. Once you have cloned the repository and installed the dependencies, the required exercises run locally. You do not need an API key or a hosted model.
+Work on your own or with a partner. You need a hosted model with an OpenAI-compatible Chat Completions API, an API key and a model that supports tool calling. You can use the same provider as last week if its model supports these features. Check its model list and free-tier limits before you start.
 
-You will write code in three places: the four fields of `Action`, the `run_typed` function and two tool functions. The room, prompts, provider setup, agent loop and tests are already in the starter. You will also trace an example through both interpreters and inspect the agent trace.
+You will write code in three places: the four fields of `Action`, the `run_typed` function and two tool functions. The room, prompts, provider setup, agent loop and tests are already in the starter. You will then play the game, run the agent with a real model and inspect what it does.
 
 ---
 
-## 1. Set up and explore
+## 1. Set up and connect to a model
 
 Clone the starter repository linked from Moodle. Open its folder and create a virtual environment with Python 3.11 or newer:
 
@@ -21,6 +21,28 @@ python -m unittest -v test_previous
 ```
 
 On Windows PowerShell, use `py -3.11 -m venv .venv` and `.\.venv\Scripts\Activate.ps1` to create and activate the environment.
+
+Set your provider's base URL, model and API key in the same terminal. For example, for a Groq endpoint on macOS or Linux:
+
+```bash
+export LLM_BASE_URL="https://api.groq.com/openai/v1"
+export LLM_MODEL="your-tool-capable-model"
+export LLM_API_KEY="your-api-key"
+export LLM_RESPONSE_MODE="json"
+python api_probe.py
+```
+
+On Windows PowerShell:
+
+```powershell
+$env:LLM_BASE_URL="https://api.groq.com/openai/v1"
+$env:LLM_MODEL="your-tool-capable-model"
+$env:LLM_API_KEY="your-api-key"
+$env:LLM_RESPONSE_MODE="json"
+python api_probe.py
+```
+
+Replace the placeholders with your provider's current values. The probe should print a model response. It tests a basic chat request; it does not establish that the model supports tool calling. Keep your key out of your code, Git commits, screenshots and forum posts.
 
 Open `world.py`. Find `view`, `get_schema` and `apply_action`.
 
@@ -62,19 +84,29 @@ Open `interpreter_framework.py` and complete `run_typed`.
 4. Limit the run to one model request with `UsageLimits(request_limit=1)`. Pass the supplied temperature and timeout, and set `max_tokens` to 160.
 5. Convert the result with `model_dump()`, validate it against the current schema, and return the action and framework result.
 
-Run the interpreter tests:
+Run the interpreter tests, then play with your hosted model:
 
 ```bash
 python -m unittest -v test_framework.TestTypedInterpreter
+python locked_in.py --backend framework --show-actions
 ```
 
-These tests use scripted replies and a mocked transport. They do not send requests to a model provider.
+Try a short conversation:
 
-Look at the tests for an undiscovered object, malformed output and retry behaviour. Which checks come from PydanticAI, and which are still handled by the room code?
+```text
+> What's in the room?
+> Look at the desk.
+> What's inside the drawer?
+> Open it.
+```
+
+Look at the action printed for each input. Does asking about the drawer open it? Does the model resolve `it`? The Python room decides what actually happens.
+
+The tests use scripted replies and a mocked transport to help you debug. The game command sends requests to your hosted model. If your provider does not support JSON mode, set `LLM_RESPONSE_MODE` to `plain` and try again.
 
 ---
 
-## 4. Register the room tools
+## 4. Give the agent room tools
 
 Open `agent_tools.py`, `room_tools.py` and `agent_runner.py`.
 
@@ -86,37 +118,45 @@ Open `agent_tools.py`, `room_tools.py` and `agent_runner.py`.
 
 `RunContext[RoomSession]` is supplied by your program. The model supplies the action. The room state stays in Python.
 
-Run the tool tests and scripted demo:
+Run the tool tests, then ask your hosted model to work on the room:
 
 ```bash
 python -m unittest -v test_framework.TestAgentBoundary
-python agent_runner.py --demo --log my_trace.jsonl
+python agent_runner.py --log agent_trace.jsonl
 ```
 
-The demo uses scripted model replies with real framework tools. It does not test how well an LLM understands the task.
+The task is: **Find the brass key, leave it where it is, and stop.** Open `agent_trace.jsonl` and follow the model's tool calls and the room's replies.
 
-The task is: **Find the brass key, leave it where it is, and stop.** Read `my_trace.jsonl` and follow the calls:
+- Which actions did the model choose? Did they lead it towards the key?
+- Did a tool reject an action? What did the model do next?
+- Did the room actually reveal the key, and is the inventory still empty?
+- Why did the run stop? If it reached a limit or failed, what would you change before trying again?
 
-- Which action reveals the drawer?
-- What does the engine return when the base is inspected?
-- How does Python decide that the task is complete?
-- What happens if a tool tries to take an item or use an undiscovered ID?
+Use a new log filename for each run. The agent has limits on model requests, tool calls and run time. The engine checks whether the goal was reached. A model saying it found the key is not enough.
+
+If you need to check your tools separately, `python agent_runner.py --demo --log demo_trace.jsonl` runs the same tools with scripted replies. It is a debugging aid, not a test of your hosted model.
 
 ---
 
-## 5. Compare the two approaches
+## 5. Compare the two interpreters
 
-The original HTTP interpreter is in `interpreter_http.py`; your framework adapter is in `interpreter_framework.py`. Read the two implementations and their tests.
+The original HTTP interpreter is in `interpreter_http.py`; your framework adapter is in `interpreter_framework.py`. Run the same cases through both using the same model, prompt, temperature and response mode:
 
-Pick one case from `cases.py`, such as asking what is inside the drawer. Trace how the player's words, public room view and recent history reach each interpreter. Then trace what happens to the result before the room changes.
+```bash
+python evaluate.py --backend http --prompt revised --cases C01,C03,C04,C11 --output http_trial.jsonl
+python evaluate.py --backend framework --prompt revised --cases C01,C03,C04,C11 --output framework_trial.jsonl
+python compare_results.py http_trial.jsonl framework_trial.jsonl
+```
 
-Run all offline tests when you are ready:
+Each evaluation includes one warm-up request and four scored requests before any retries. Use `--pause` if your provider requires more space between requests. Choose new output filenames if you run the comparison again.
+
+Look at the actions, correct interpretations and resulting room states. Did the framework change the model's answers? What work did it take over from your HTTP implementation? Find one case where a valid action and a correct interpretation are not the same thing.
+
+Run the full test suite when you are ready:
 
 ```bash
 python -m unittest -v
 ```
-
-A model connection is optional. If you already have a local OpenAI-compatible model with tool support, you can use it to try the game and agent without a hosted service. The `LLM_BASE_URL`, `LLM_MODEL` and `LLM_API_KEY` settings are described in `config.py`. Results from a live model can differ from the scripted test.
 
 ---
 
