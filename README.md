@@ -2,7 +2,7 @@
 
 This project builds on the Locked In escape room from the previous class. The room and the earlier HTTP interpreter are included. Your work is in `action_model.py`, `interpreter_framework.py` and `agent_tools.py`.
 
-Follow the lab on Moodle or open [lab.md](lab.md). The required exercises use scripted model replies and run locally after setup. You do not need an API key.
+Follow the lab on Moodle or open [lab.md](lab.md). You will connect the game and agent to a hosted model using an API key. Choose an OpenAI-compatible Chat Completions provider and a model that supports tool calling.
 
 ## Setup
 
@@ -24,21 +24,23 @@ py -3.11 -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-Start with the room and the existing tests:
+Set `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY` and `LLM_RESPONSE_MODE` as shown in the lab. Choose a current model supported by your provider, check its tool-calling support and free-tier limits, and keep your key out of the repository.
+
+Test your API connection:
 
 ```bash
-python manual_room.py --demo
-python -m unittest -v test_previous
+python api_probe.py
 ```
 
-After completing the three files:
+The probe checks basic chat, not tool calling. After completing the three files, use your hosted model to play and run the agent:
 
 ```bash
 python -m unittest -v
-python agent_runner.py --demo --log my_trace.jsonl
+python locked_in.py --backend framework --show-actions
+python agent_runner.py --log agent_trace.jsonl
 ```
 
-`--demo` uses fixed model replies. It exercises the framework and the room tools without a network connection. It does not measure an LLM's language understanding.
+The unit tests use scripted replies and a mocked transport. `python agent_runner.py --demo --log demo_trace.jsonl` is also available to check the tools without a model call. The lab's game and agent runs use the hosted model.
 
 ## Files
 
@@ -49,8 +51,8 @@ python agent_runner.py --demo --log my_trace.jsonl
 - `agent_tools.py`: register the observation and action tools.
 - `room_tools.py`: validate tool actions and return the public room view.
 - `agent_runner.py`: run the bounded agent and its scripted demo.
-- `test_previous.py` and `test_framework.py`: offline checks.
-- `example_trace.md`: a walkthrough of the scripted run.
+- `test_previous.py` and `test_framework.py`: checks using mocked model responses.
+- `example_trace.md`: a walkthrough of the scripted demo.
 
 The agent's task is to find the key without taking it. The controller stops after the room confirms the goal. It also limits the number of model turns and tool calls, and sets a timeout.
 
