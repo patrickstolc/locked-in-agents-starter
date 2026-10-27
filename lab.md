@@ -4,6 +4,10 @@ Last time, you wrote an interpreter that turned a player's sentence into an acti
 
 Work through the steps yourself or with a partner. Once you have cloned the repository and installed the dependencies, the required exercises run locally. You do not need an API key or a hosted model.
 
+You will write code in three places: the four fields of `Action`, the `run_typed` function and two tool functions. The room, prompts, provider setup, agent loop and tests are already in the starter. You will also trace an example through both interpreters and inspect the agent trace.
+
+---
+
 ## 1. Set up and explore
 
 Clone the starter repository linked from Moodle. Open its folder and create a virtual environment with Python 3.11 or newer:
@@ -23,6 +27,8 @@ Open `world.py`. Find `view`, `get_schema` and `apply_action`.
 - What does the player know at the start?
 - Which function decides whether an action changes the room?
 - Why is finding an object different from picking it up?
+
+---
 
 ## 2. Describe an action
 
@@ -44,6 +50,8 @@ python -m unittest -v test_framework.TestTypedInterpreter.test_typed_action_reje
 
 A well-formed action can still be impossible. For example, `take` with `brass_key` has the right fields but must be rejected before the key is discovered.
 
+---
+
 ## 3. Use the framework for one turn
 
 Open `interpreter_framework.py` and complete `run_typed`.
@@ -63,6 +71,8 @@ python -m unittest -v test_framework.TestTypedInterpreter
 These tests use scripted replies and a mocked transport. They do not send requests to a model provider.
 
 Look at the tests for an undiscovered object, malformed output and retry behaviour. Which checks come from PydanticAI, and which are still handled by the room code?
+
+---
 
 ## 4. Register the room tools
 
@@ -92,6 +102,8 @@ The task is: **Find the brass key, leave it where it is, and stop.** Read `my_tr
 - How does Python decide that the task is complete?
 - What happens if a tool tries to take an item or use an undiscovered ID?
 
+---
+
 ## 5. Compare the two approaches
 
 The original HTTP interpreter is in `interpreter_http.py`; your framework adapter is in `interpreter_framework.py`. Read the two implementations and their tests.
@@ -105,6 +117,8 @@ python -m unittest -v
 ```
 
 A model connection is optional. If you already have a local OpenAI-compatible model with tool support, you can use it to try the game and agent without a hosted service. The `LLM_BASE_URL`, `LLM_MODEL` and `LLM_API_KEY` settings are described in `config.py`. Results from a live model can differ from the scripted test.
+
+---
 
 ## 6. Finish the Moodle activities
 
